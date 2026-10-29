@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#05061a">
+<title>Cây trưởng thành</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,600;0,800;0,900;1,400&display=swap" rel="stylesheet">
+<style>
+  :root { --ink: #eaf0ff; --muted: #9aa6d8; --glass: rgba(14, 20, 58, .55); --line: rgba(160, 180, 255, .22); }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { font-family: "Be Vietnam Pro", "Segoe UI", sans-serif; color: var(--ink); overflow: hidden; -webkit-tap-highlight-color: transparent;
+         background: radial-gradient(ellipse at 50% 120%, #1b1f6b 0%, #0b0f38 45%, #05061a 80%); }
+  #sky { position: fixed; inset: 0; width: 100%; height: 100%; }
+  header { position: absolute; top: 0; left: 0; right: 0; z-index: 5; text-align: center; padding: max(14px, env(safe-area-inset-top)) 16px 0; pointer-events: none; }
+  header h1 { font-size: clamp(20px, 7.2vw, 54px); font-weight: 900; letter-spacing: 1px; white-space: nowrap;
+              background: linear-gradient(90deg, #ff7ab8, #ffd36b 30%, #7fd8ff 65%, #c49bff); -webkit-background-clip: text; background-clip: text; color: transparent;
+              filter: drop-shadow(0 0 18px rgba(140, 160, 255, .45)); }
+  header p { font-size: clamp(12px, 1.5vw, 18px); color: var(--muted); margin-top: 2px; letter-spacing: .3px; }
+  #stats { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 8px; pointer-events: none; }
+  #stats div { display: flex; align-items: baseline; gap: 5px; white-space: nowrap; background: var(--glass); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px 4px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  #stats b { font-size: clamp(15px, 1.8vw, 22px); font-weight: 900; }
+  #stats span { font-size: clamp(11px, 1vw, 13px); color: var(--muted); }
+  @media (orientation: landscape) and (max-height: 900px) {
+    #stats { position: fixed; left: 16px; bottom: 16px; flex-direction: column; margin: 0; }
+  }
+  #stage { position: absolute; inset: 0; }
+  #stage.grow { animation: reveal 2.4s cubic-bezier(.3, .7, .3, 1) both; }
+  @keyframes reveal { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0 0 0 0); } }
+  svg#tree { position: absolute; inset: 0; width: 100%; height: 100%; }
+  svg#tree .neb { mix-blend-mode: screen; transition: opacity .3s; opacity: .75; }
+  svg#tree .neb.hot { opacity: 1; }
+  svg#tree .flow { fill: none; stroke: #fff; stroke-linecap: round; stroke-dasharray: 1 26; animation: flow 2.6s linear infinite; opacity: .85; }
+  @keyframes flow { to { stroke-dashoffset: -54; } }
+  svg#tree .tw { animation: tw var(--d) ease-in-out infinite alternate; animation-delay: var(--dl); }
+  @keyframes tw { from { opacity: .15; } to { opacity: 1; } }
+  .star { position: absolute; transform: translate(-50%, -50%); z-index: 2; cursor: pointer; border-radius: 50%;
+          animation: pop .6s cubic-bezier(.2, 1.6, .4, 1) both, float var(--d) ease-in-out infinite alternate; animation-delay: var(--pd), var(--dl); }
+  .star { background: #111; box-shadow: 0 0 0 2px var(--c), 0 0 16px 3px var(--c); transition: transform .2s; }
+  .star .pic { position: absolute; inset: 0; border-radius: 50%; background: center/cover no-repeat; border: 2px solid rgba(255,255,255,.9); opacity: 0; transition: opacity 1.2s ease; }
+  .star .pic.show { opacity: 1; }
+  .star:hover { z-index: 4; scale: 1.25; }
+  /* ring view: one group's photos circling the hub */
+  #ring { position: fixed; inset: 0; z-index: 15; display: none; background: radial-gradient(circle at 50% 50%, rgba(24, 30, 92, .78), rgba(4, 6, 24, .94) 70%);
+          backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); }
+  #ring.open { display: block; animation: fade .4s both; }
+  #ring .orbit { position: absolute; border: 1px dashed var(--c); border-radius: 50%; opacity: .35; pointer-events: none; }
+  #ring .item { position: absolute; left: 0; top: 0; border-radius: 50%; background: #111 center/cover no-repeat; border: 2px solid #fff; cursor: pointer;
+                box-shadow: 0 0 0 2px var(--c), 0 0 18px 2px var(--c); transition: scale .35s cubic-bezier(.2, 1.4, .4, 1), box-shadow .3s, opacity .6s; }
+  #ring .item.on { scale: 1.45; z-index: 3; box-shadow: 0 0 0 3px #fff, 0 0 36px 10px var(--c); }
+  #ring .item.fade { opacity: 0; }
+  #ring .hub { position: absolute; transform: translate(-50%, -50%); text-align: center; }
+  #ring .hub b { display: block; font-size: clamp(30px, 5vw, 56px); font-weight: 900; letter-spacing: 4px; color: #fff; text-shadow: 0 0 18px var(--c), 0 0 3px var(--c); line-height: 1.1; }
+  #ring .hub i { display: block; color: var(--ink); font-size: clamp(12px, 1.3vw, 16px); margin-top: 4px; }
+  #ring .hub small { display: block; color: var(--muted); font-size: 12px; margin-top: 6px; }
+  #ring .hub button { margin-top: 12px; font: inherit; font-weight: 600; font-size: 13px; color: #fff; background: rgba(10, 14, 40, .6); border: 1px solid var(--c); border-radius: 999px; padding: 7px 16px; cursor: pointer; }
+  #ring .close { position: absolute; right: 16px; top: max(16px, env(safe-area-inset-top)); width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line); background: rgba(10, 14, 40, .7); color: #fff; font-size: 22px; cursor: pointer; z-index: 4; }
+  #ring .hint { position: absolute; left: 0; right: 0; bottom: max(18px, env(safe-area-inset-bottom)); text-align: center; color: var(--muted); font-size: 12.5px; pointer-events: none; }
+  @keyframes pop { from { transform: translate(-50%, -50%) scale(0); } to { transform: translate(-50%, -50%) scale(1); } }
+  @keyframes float { from { margin-top: -3px; } to { margin-top: 3px; } }
+  .tag { position: absolute; transform: translate(-50%, -50%); z-index: 3; cursor: pointer; text-align: center;
+         background: var(--glass); border: 1px solid var(--c); border-radius: 16px; padding: 4px 12px 6px; width: max-content; max-width: var(--w);
+         backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: 0 0 22px -4px var(--c); transition: transform .2s; animation: fade .8s both; animation-delay: var(--pd); }
+  .tag b { display: block; font-size: clamp(18px, 2.4vw, 30px); font-weight: 900; letter-spacing: 3px; line-height: 1.15; color: #fff; text-shadow: 0 0 12px var(--c), 0 0 2px var(--c); }
+  .tag small { display: block; font-size: clamp(10px, .95vw, 13px); color: var(--ink); opacity: .9; }
+  .tag i { display: block; font-size: clamp(10px, .9vw, 12.5px); color: var(--muted); line-height: 1.35; margin-top: 2px; }
+  .tag:hover, .tag.hot { transform: translate(-50%, -50%) scale(1.06); }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  #bar { position: absolute; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); z-index: 6; display: flex; gap: 8px; }
+  #bar button { font: inherit; font-weight: 600; font-size: 13px; white-space: nowrap; color: var(--ink); background: var(--glass); border: 1px solid var(--line); border-radius: 999px;
+                padding: 9px 16px; cursor: pointer; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  #bar button:hover { border-color: #7fd8ff; }
+  @media (orientation: portrait) { #bar { left: 50%; right: auto; transform: translateX(-50%); } }
+  /* intro: a seed falls, sprouts, then the tree grows */
+  #intro { position: fixed; inset: 0; z-index: 10; cursor: pointer; transition: opacity .8s; }
+  #intro.out { opacity: 0; pointer-events: none; }
+  #intro .seed { position: absolute; left: 50%; top: -20px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: #fff;
+                 box-shadow: 0 0 12px 4px #7fd8ff, 0 0 40px 10px #5a7dff; animation: drop 1.1s cubic-bezier(.5, 0, .9, .5) forwards; }
+  @keyframes drop { to { top: var(--gy); } }
+  #intro .sprout { position: absolute; left: 50%; top: var(--gy); width: 60px; height: 50px; margin: -46px 0 0 -30px; transform-origin: 50% 100%; transform: scale(0);
+                   animation: sprout .7s 1.1s cubic-bezier(.2, 1.5, .4, 1) forwards; }
+  @keyframes sprout { to { transform: scale(1); } }
+  #intro p { position: absolute; left: 0; right: 0; top: 42%; text-align: center; font-size: clamp(15px, 2vw, 22px); color: var(--ink); font-style: italic; opacity: 0; animation: fade 1s .3s forwards; padding: 0 20px; }
+  #intro .skip { position: absolute; left: 50%; transform: translateX(-50%); bottom: max(22px, env(safe-area-inset-bottom)); font: inherit; font-size: 13px; color: var(--muted); background: none; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+  /* lightbox */
+  #lb { position: fixed; inset: 0; background: rgba(4, 6, 24, .82); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); display: none; align-items: center; justify-content: center; z-index: 20; padding: 16px; }
+  #lb.open { display: flex; }
+  #lb .box { position: relative; background: rgba(16, 22, 64, .9); border: 1px solid var(--c, #7fd8ff); border-radius: 22px; padding: 12px; width: min(94vw, 960px);
+             box-shadow: 0 0 60px -10px var(--c, #7fd8ff); }
+  #lb .head { display: flex; align-items: baseline; gap: 10px; padding: 2px 6px 10px; flex-wrap: wrap; }
+  #lb .head b { font-size: 20px; font-weight: 900; letter-spacing: 3px; color: #fff; text-shadow: 0 0 10px var(--c); }
+  #lb .head i { color: var(--muted); font-size: 13px; }
+  #lb .head span { margin-left: auto; font-weight: 600; font-size: 13px; color: var(--ink); }
+  #lb img { display: block; width: 100%; max-height: calc(100vh - 150px); object-fit: contain; border-radius: 14px; background: #000; }
+  #lb .empty { padding: 30px 20px; text-align: center; line-height: 1.7; }
+  #lb .empty code { background: rgba(255,255,255,.1); border-radius: 6px; padding: 1px 7px; }
+  #lb .nav { position: absolute; top: 50%; transform: translateY(-50%); width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--c); background: rgba(10, 14, 40, .75); color: #fff; font-size: 24px; cursor: pointer; }
+  #lb .prev { left: -58px; } #lb .next { right: -58px; }
+  #lb .x { position: absolute; top: -14px; right: -14px; width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line); background: #0b0f38; color: #fff; font-size: 20px; cursor: pointer; }
+  @media (max-width: 1100px) { #lb .prev { left: 18px; } #lb .next { right: 18px; } #lb .x { top: 6px; right: 6px; } }
+  @media (prefers-reduced-motion: reduce) { #stage.grow, .star, .tag, svg#tree .flow, svg#tree .tw { animation: none !important; } }
+  .orb { position: absolute; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; background: var(--c); box-shadow: 0 0 10px 2px var(--c);
+         animation: tw var(--d) ease-in-out infinite alternate, pop .6s both; animation-delay: var(--dl), var(--pd); }
+</style>
+</head>
+<body>
+<canvas id="sky"></canvas>
+<header>
+  <h1>CÂY TRƯỞNG THÀNH</h1>
+  <p>Đức · Trí · Thể · Mĩ — hành trình lớn lên của học sinh THPT Lương Thế Vinh</p>
+  <div id="stats">
+    <div><b id="nPhotos">0</b><span>khoảnh khắc</span></div>
+    <div><b id="nActs">0</b><span>hoạt động</span></div>
+    <div><b id="nGroups">0</b><span>phẩm chất</span></div>
+  </div>
+</header>
+<div id="stage"><svg id="tree" preserveAspectRatio="none"></svg></div>
+<div id="bar">
+  <button id="replay">✨ Xem cây lớn lên</button>
+  <button id="full" title="Toàn màn hình">⛶</button>
+</div>
+<div id="intro">
+  <div class="seed"></div>
+  <svg class="sprout" viewBox="0 0 60 50"><path d="M30 50 V24" stroke="#7fd8ff" stroke-width="3" stroke-linecap="round"/><path d="M30 28 C18 28 8 20 6 8 C20 8 29 16 30 28 Z" fill="#5fe0b5"/><path d="M30 24 C40 22 50 14 54 2 C40 2 31 10 30 24 Z" fill="#7fd8ff"/></svg>
+  <p>Mỗi hành trình bắt đầu từ một hạt mầm…</p>
+  <button class="skip">Bỏ qua ›</button>
+</div>
+<div id="ring"><button class="close" aria-label="Đóng">×</button><div class="orbit"></div><div class="hub"></div><div class="hint"></div></div>
+<div id="lb"><div class="box">
+  <button class="x" id="lbx" aria-label="Đóng">×</button>
+  <div class="head"><b id="lbn"></b><i id="lbt"></i><span id="lbc"></span></div>
+  <img id="lbi" alt=""><div class="empty" id="lbe"></div>
+  <button class="nav prev" id="lbp" aria-label="Ảnh trước">‹</button><button class="nav next" id="lbnx" aria-label="Ảnh sau">›</button>
+</div></div>
+
+<script>
+// ==== THẦY CÔ CHỈ CẦN SỬA PHẦN NÀY ====
+// 4 tán: "dir" là tên thư mục ảnh nằm cạnh index.html (ảnh đặt tên 1.jpg, 2.jpg, 3.jpg...); "loi" là lời dẫn ngắn.
+const GROUPS = [
+  { dir: "Duc", name: "ĐỨC", color: "#ff5fa2", loi: "Sống tử tế – biết sẻ chia, biết tri ân" },
+  { dir: "Tri", name: "TRÍ", color: "#5fb2ff", loi: "Ham học hỏi – dám khám phá, sáng tạo" },
+  { dir: "The", name: "THỂ", color: "#ffb347", loi: "Rèn thân thể – bản lĩnh, kỷ luật" },
+  { dir: "Mi",  name: "MĨ",  color: "#b07cff", loi: "Cảm nhận cái đẹp – khéo tay, tài hoa" },
+];
+const SO_HOAT_DONG = 22; // số hoạt động hiện trên bộ đếm
+// ======================================
+
+const EXTS = ["jpg", "jpeg", "png", "webp", "JPG", "JPEG", "PNG"];
+const stage = document.getElementById("stage"), svg = document.getElementById("tree");
+GROUPS.forEach(g => { g.photos = []; g.loading = true; });
+
+let seed = 18; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+// ---------- starry sky (canvas) ----------
+const sky = document.getElementById("sky"), ctx = sky.getContext("2d");
+let stars = [], shoot = null;
+function initSky() {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  sky.width = innerWidth * dpr; sky.height = innerHeight * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  stars = Array.from({ length: Math.round(innerWidth * innerHeight / 3500) }, () => ({
+    x: Math.random() * innerWidth, y: Math.random() * innerHeight, r: Math.random() * 1.3 + .2, p: Math.random() * 6.3, s: .5 + Math.random() * 1.5 }));
+}
+function drawSky(t) {
+  ctx.clearRect(0, 0, innerWidth, innerHeight);
+  for (const s of stars) {
+    ctx.globalAlpha = .35 + .65 * Math.abs(Math.sin(s.p + t / 1000 * s.s));
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.3); ctx.fill();
+  }
+  if (!shoot && Math.random() < .004) shoot = { x: Math.random() * innerWidth * .8, y: Math.random() * innerHeight * .3, l: 0 };
+  if (shoot) {
+    shoot.l += 14; const a = Math.max(0, 1 - shoot.l / 500);
+    const g = ctx.createLinearGradient(shoot.x + shoot.l, shoot.y + shoot.l * .4, shoot.x + shoot.l - 90, shoot.y + shoot.l * .4 - 36);
+    g.addColorStop(0, `rgba(255,255,255,${a})`); g.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.globalAlpha = 1; ctx.strokeStyle = g; ctx.lineWidth = 2; ctx.beginPath();
+    ctx.moveTo(shoot.x + shoot.l, shoot.y + shoot.l * .4); ctx.lineTo(shoot.x + shoot.l - 90, shoot.y + shoot.l * .4 - 36); ctx.stroke();
+    if (a <= 0) shoot = null;
+  }
+  ctx.globalAlpha = 1; requestAnimationFrame(drawSky);
+}
+
+// ---------- canopy geometry ----------
+const isPortrait = () => innerWidth < innerHeight * 0.9;
+function canopies(W, H) {
+  const P = isPortrait();
+  const pos = P ? [[0.27, 0.39], [0.73, 0.39], [0.27, 0.665], [0.73, 0.665]]
+                : [[0.165, 0.58], [0.365, 0.38], [0.635, 0.38], [0.835, 0.58]];
+  const rx = (P ? 0.225 : 0.125) * W, ry = (P ? 0.108 : 0.175) * H;
+  return GROUPS.map((g, i) => {
+    const cx = pos[i][0] * W, cy = pos[i][1] * H;
+    // a bushy cloud: one big ellipse and four lobes
+    const blobs = [[cx, cy, rx, ry], [cx - rx * 0.42, cy + ry * 0.3, rx * 0.6, ry * 0.65], [cx + rx * 0.42, cy + ry * 0.3, rx * 0.6, ry * 0.65],
+                   [cx - rx * 0.45, cy - ry * 0.3, rx * 0.55, ry * 0.6], [cx + rx * 0.45, cy - ry * 0.3, rx * 0.55, ry * 0.6]];
+    return { g, i, cx, cy, rx, ry, blobs };
+  });
+}
+const inside = (c, x, y, k = 1) => c.blobs.some(([bx, by, rx, ry]) => ((x - bx) / (rx * k)) ** 2 + ((y - by) / (ry * k)) ** 2 <= 1);
+let CAN = [];
+const groupAt = (x, y) => CAN.find(c => inside(c, x, y, 1.1));
+
+// a curved limb tapering from w0 to w1 along the quadratic curve p0 -> q -> p1
+function limb(x0, y0, qx, qy, x1, y1, w0, w1, fill) {
+  const L = [], R = [], N = 28;
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, m = 1 - t;
+    const x = m * m * x0 + 2 * m * t * qx + t * t * x1, y = m * m * y0 + 2 * m * t * qy + t * t * y1;
+    const dx = 2 * m * (qx - x0) + 2 * t * (x1 - qx), dy = 2 * m * (qy - y0) + 2 * t * (y1 - qy), len = Math.hypot(dx, dy) || 1;
+    const w = (w0 + (w1 - w0) * t ** 0.8) / 2;
+    L.push(`${x - dy / len * w} ${y + dx / len * w}`); R.push(`${x + dy / len * w} ${y - dx / len * w}`);
+  }
+  return `<path d="M${L.join(" L")} L${R.reverse().join(" L")} Z" fill="${fill}"/><circle cx="${x1}" cy="${y1}" r="${w1 / 2}" fill="${fill}"/>`;
+}
+const flow = (d, w, dur) => `<path class="flow" d="${d}" stroke-width="${w}" style="animation-duration:${dur}s"/>`;
+
+function drawTree(W, H) {
+  const P = isPortrait(), bx = W / 2, by = H * (P ? 0.9 : 0.94), tw = Math.max(26, Math.min(W * 0.04, H * 0.065)), ty = H * (P ? 0.7 : 0.64), th = by - ty;
+  let s = `<defs>
+    <linearGradient id="beam" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#3b5bff"/><stop offset=".6" stop-color="#7a7dff"/><stop offset="1" stop-color="#c49bff"/></linearGradient>
+    <linearGradient id="core" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#bfe9ff"/><stop offset="1" stop-color="#ffffff" stop-opacity=".2"/></linearGradient>
+    <radialGradient id="planet" cx=".5" cy="0" r="1"><stop offset="0" stop-color="#4a5bff" stop-opacity=".55"/><stop offset=".25" stop-color="#1c2470" stop-opacity=".9"/><stop offset="1" stop-color="#070a26"/></radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="${P ? 5 : 8}" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    ${CAN.map(c => `<radialGradient id="neb${c.i}"><stop offset="0" stop-color="${c.g.color}" stop-opacity=".75"/><stop offset=".45" stop-color="${c.g.color}" stop-opacity=".28"/><stop offset="1" stop-color="${c.g.color}" stop-opacity="0"/></radialGradient>`).join("")}
+  </defs>`;
+  // planet horizon the tree stands on
+  s += `<ellipse cx="${bx}" cy="${by + W * 1.2}" rx="${W * 1.6}" ry="${W * 1.22}" fill="url(#planet)" stroke="#7fa0ff" stroke-opacity=".5" stroke-width="1.5"/>`;
+  // nebula clouds for each canopy
+  for (const c of CAN) {
+    s += `<g class="neb n${c.i}">`;
+    for (let k = 0; k < 16; k++) {
+      const [ex, ey, erx, ery] = c.blobs[k % c.blobs.length];
+      const x = ex + (rnd() - .5) * erx * .8, y = ey + (rnd() - .5) * ery * .8, r = Math.max(erx, ery) * (0.55 + rnd() * 0.5);
+      s += `<ellipse cx="${x}" cy="${y}" rx="${r * erx / Math.max(erx, ery) * 1.1}" ry="${r * ery / Math.max(erx, ery) * 1.1}" fill="url(#neb${c.i})"/>`;
+    }
+    s += `</g>`;
+  }
+  // branches of light, then the trunk over their bases
+  let t = `<g filter="url(#glow)">`, flows = "";
+  const branches = CAN.map(c => {
+    const side = Math.sign(c.cx - bx), low = c.cy > ty - H * 0.2;
+    const x0 = bx + side * tw * 0.2, y0 = ty + th * (low ? 0.12 : 0.02);
+    const x1 = c.cx - side * c.rx * 0.1, y1 = c.cy + c.ry * 0.15;
+    const qx = bx + (x1 - bx) * (low ? 0.4 : 0.2), qy = low ? Math.min(y0, y1) - H * 0.06 : y0 - (y0 - y1) * 0.75;
+    return { c, x0, y0, qx, qy, x1, y1, side };
+  });
+  for (const b of branches) {
+    t += limb(b.x0, b.y0, b.qx, b.qy, b.x1, b.y1, tw * 0.8, tw * 0.18, "url(#beam)");
+    flows += flow(`M${b.x0} ${b.y0} Q ${b.qx} ${b.qy}, ${b.x1} ${b.y1}`, 2.6, 2.2 + rnd());
+    const u = 0.6, m = 1 - u, mx = m * m * b.x0 + 2 * m * u * b.qx + u * u * b.x1, my = m * m * b.y0 + 2 * m * u * b.qy + u * u * b.y1;
+    for (const k of [-1, 1]) {
+      const ex = b.c.cx + k * b.c.rx * 0.62, ey = b.c.cy - b.c.ry * (k === b.side ? 0.05 : 0.45), qx = (mx + ex) / 2, qy = Math.min(my, ey) - b.c.ry * 0.12;
+      t += limb(mx, my, qx, qy, ex, ey, tw * 0.32, tw * 0.06, "url(#beam)");
+      flows += flow(`M${mx} ${my} Q ${qx} ${qy}, ${ex} ${ey}`, 1.8, 1.6 + rnd());
+    }
+  }
+  t += `<path d="M${bx - tw * 1.3} ${by + 2}
+    C ${bx - tw * 0.8} ${by - th * 0.05}, ${bx - tw * 0.6} ${by - th * 0.3}, ${bx - tw * 0.5} ${by - th * 0.55}
+    C ${bx - tw * 0.45} ${by - th * 0.8}, ${bx - tw * 0.6} ${ty + th * 0.08}, ${bx - tw * 0.9} ${ty - th * 0.04}
+    Q ${bx} ${ty + th * 0.1}, ${bx + tw * 0.9} ${ty - th * 0.04}
+    C ${bx + tw * 0.6} ${ty + th * 0.08}, ${bx + tw * 0.45} ${by - th * 0.8}, ${bx + tw * 0.5} ${by - th * 0.55}
+    C ${bx + tw * 0.6} ${by - th * 0.3}, ${bx + tw * 0.8} ${by - th * 0.05}, ${bx + tw * 1.3} ${by + 2}
+    Q ${bx} ${by + 8}, ${bx - tw * 1.3} ${by + 2} Z" fill="url(#beam)"/>`;
+  t += limb(bx, by, bx, (by + ty) / 2, bx, ty + th * 0.05, tw * 0.3, tw * 0.12, "url(#core)");
+  for (const k of [-1, 1]) t += limb(bx + k * tw * 0.4, by - 4, bx + k * tw * 1.6, by + 2, bx + k * tw * 3, by + H * 0.02, tw * 0.45, tw * 0.06, "url(#beam)");
+  t += `</g>`;
+  flows += flow(`M${bx} ${by} L ${bx} ${ty}`, 3, 1.8) + flow(`M${bx - tw * 0.25} ${by} Q ${bx - tw * 0.3} ${(by + ty) / 2}, ${bx - tw * 0.1} ${ty}`, 2, 2.4);
+  s += t + flows;
+  // glowing "leaves" of light and twinkling sparkles make each canopy bushy
+  for (const c of CAN) {
+    s += `<g filter="url(#glow)">`;
+    for (let k = 0, n = 0; k < 600 && n < 46; k++) {
+      const x = c.cx + (rnd() * 2 - 1) * c.rx * 1.4, y = c.cy + (rnd() * 2 - 1) * c.ry * 1.3;
+      if (!inside(c, x, y, 0.95)) continue; n++;
+      s += `<circle class="tw" cx="${x}" cy="${y}" r="${1.5 + rnd() * (P ? 3 : 4.5)}" fill="${c.g.color}" style="--d:${1.5 + rnd() * 2.5}s;--dl:${-rnd() * 3}s"/>`;
+    }
+    s += `</g>`;
+    for (let k = 0, n = 0; k < 600 && n < 60; k++) {
+      const x = c.cx + (rnd() * 2 - 1) * c.rx * 1.4, y = c.cy + (rnd() * 2 - 1) * c.ry * 1.3;
+      if (!inside(c, x, y)) continue; n++;
+      s += `<circle class="tw" cx="${x}" cy="${y}" r="${0.6 + rnd() * 1.6}" fill="#fff" style="--d:${1 + rnd() * 2}s;--dl:${-rnd() * 3}s"/>`;
+    }
+  }
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.innerHTML = s;
+}
+
+function layout() {
+  const W = innerWidth, H = innerHeight; seed = 18;
+  stage.querySelectorAll(".star, .tag").forEach(e => e.remove());
+  CAN = canopies(W, H);
+  drawTree(W, H);
+  const P = isPortrait(), unit = Math.min(W, H * 1.6), maxOn = P ? 10 : 14;
+  const size = Math.min(unit * (P ? 0.085 : 0.06), Math.min(CAN[0].rx, CAN[0].ry) * 0.5);
+  for (const c of CAN) {
+    // name tag first, so the photo stars can keep clear of it
+    const tagY = c.cy - c.ry * (P ? 1.05 : 0.95), t = document.createElement("div");
+    t.className = "tag"; t.dataset.i = c.i;
+    t.style.cssText = `left:${c.cx}px;top:${tagY}px;--c:${c.g.color};--w:${P ? W * 0.46 : Math.max(170, c.rx * 1.9)}px;--pd:${growing ? 2.2 : 0}s`;
+    const cnt = c.g.loading ? "đang tải ảnh…" : c.g.photos.length ? `${c.g.photos.length} khoảnh khắc` : "chưa có ảnh";
+    t.innerHTML = `<b>${c.g.name}</b><small>${cnt}</small><i>${c.g.loi}</i>`;
+    t.onclick = e => { e.stopPropagation(); openRing(c.g); };
+    stage.appendChild(t);
+    const tw = t.offsetWidth / 2 + size * 0.45, th = t.offsetHeight / 2 + size * 0.45;
+    const n = Math.min(c.g.photos.length, maxOn), slots = [];
+    for (let tries = 0; slots.length < n && tries < 6000; tries++) {
+      const x = c.cx + (rnd() * 2 - 1) * c.rx * 1.3, y = c.cy + (rnd() * 2 - 1) * c.ry * 1.25;
+      if (!inside(c, x, y, 0.88) || Math.abs(x - c.cx) < tw && Math.abs(y - tagY) < th) continue;
+      if (x < size * 0.6 || x > W - size * 0.6) continue;
+      if (slots.some(s => Math.hypot(s[0] - x, s[1] - y) < size * (tries > 3000 ? 0.8 : 1.08))) continue;
+      slots.push([x, y]);
+    }
+    slots.forEach(([x, y], k) => addStar(c, x, y, size, k));
+    c.g.next = slots.length;
+  }
+}
+function addStar(c, x, y, size, k) {
+  const el = document.createElement("div"), g = c.g;
+  el.className = "star"; el.dataset.g = c.i; el.dataset.k = k;
+  el.style.cssText = `left:${x}px;top:${y}px;width:${size}px;height:${size}px;--c:${g.color};--d:${2 + rnd() * 2}s;--dl:${-rnd() * 3}s;--pd:${(growing ? 1.4 : 0) + (1 - y / innerHeight) * (growing ? 1 : .3) + rnd() * .3}s`;
+  el.innerHTML = `<div class="pic show" style="background-image:url('${g.photos[k]}')"></div><div class="pic"></div>`;
+  el.onclick = e => { e.stopPropagation(); openRing(g); };
+  stage.appendChild(el);
+}
+
+// every so often one photo in each canopy cross-fades to another photo of that group
+function swapPic(el, k, url) {
+  const [a, b] = el.querySelectorAll(".pic"), front = a.classList.contains("show") ? a : b, back = front === a ? b : a;
+  const im = new Image();
+  im.onload = () => { back.style.backgroundImage = `url('${url}')`; back.classList.add("show"); front.classList.remove("show"); el.dataset.k = k; };
+  im.src = url;
+}
+setInterval(() => {
+  if (document.hidden || growing || ring.classList.contains("open") || lb.classList.contains("open")) return;
+  for (const c of CAN) {
+    const g = c.g, stars = [...stage.querySelectorAll(`.star[data-g="${c.i}"]`)];
+    if (!stars.length || Math.random() < 0.35) continue;
+    const el = stars[Math.floor(Math.random() * stars.length)];
+    let k = el.dataset.k;
+    if (g.photos.length > stars.length) {
+      const shown = new Set(stars.map(s => +s.dataset.k));
+      for (let guard = 0; guard < g.photos.length && shown.has(g.next % g.photos.length); guard++) g.next++;
+      k = g.next++ % g.photos.length;
+    } else if (stars.length > 1) { // few photos: swap two stars' photos
+      const other = stars.find(s => s !== el), ok = other.dataset.k;
+      swapPic(other, k, g.photos[k]); k = ok;
+    }
+    swapPic(el, k, g.photos[k]);
+  }
+}, 1300);
+
+stage.onclick = e => { const c = groupAt(e.clientX, e.clientY); if (c) openRing(c.g); };
+stage.onmousemove = e => {
+  const c = groupAt(e.clientX, e.clientY);
+  stage.style.cursor = c ? "pointer" : "";
+  svg.querySelectorAll(".neb").forEach(n => n.classList.toggle("hot", !!c && n.classList.contains("n" + c.i)));
+  stage.querySelectorAll(".tag").forEach(t => t.classList.toggle("hot", !!c && t.dataset.i == c.i));
+};
+
+// ---------- find photos 1.jpg, 2.jpg, ... until 3 numbers in a row are missing ----------
+const probe = src => new Promise(r => { const im = new Image(); im.onload = () => r(src); im.onerror = () => r(null); im.src = src; });
+async function findOne(dir, n) { for (const ext of EXTS) { const s = await probe(`${dir}/${n}.${ext}`); if (s) return s; } return null; }
+async function loadGroup(g) {
+  let n = 1, miss = 0;
+  while (miss < 3 && n <= 500) {
+    const batch = await Promise.all([0, 1, 2, 3, 4, 5].map(k => findOne(g.dir, n + k)));
+    for (const s of batch) { if (miss >= 3) break; if (s) { g.photos.push(s); miss = 0; } else miss++; }
+    n += 6;
+  }
+  g.loading = false; layout(); updateStats();
+}
+
+// ---------- counters ----------
+function countTo(el, n) {
+  const from = +el.textContent || 0, t0 = performance.now();
+  const step = t => { const p = Math.min(1, (t - t0) / 1400); el.textContent = Math.round(from + (n - from) * (1 - (1 - p) ** 3)); if (p < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+function updateStats() {
+  if (growing) return;
+  countTo(document.getElementById("nPhotos"), GROUPS.reduce((a, g) => a + g.photos.length, 0));
+  countTo(document.getElementById("nActs"), SO_HOAT_DONG);
+  countTo(document.getElementById("nGroups"), GROUPS.length);
+}
+
+// ---------- intro: seed -> sprout -> tree grows ----------
+const intro = document.getElementById("intro");
+let growing = false, timers = [];
+function startIntro() {
+  timers.forEach(clearTimeout); growing = true;
+  intro.style.setProperty("--gy", (isPortrait() ? 0.9 : 0.94) * innerHeight + "px");
+  intro.classList.remove("out");
+  intro.innerHTML = intro.innerHTML; // restart CSS animations
+  intro.querySelector(".skip").onclick = e => { e.stopPropagation(); endIntro(false); };
+  stage.classList.remove("grow"); stage.style.visibility = "hidden";
+  timers = [
+    setTimeout(() => { stage.style.visibility = ""; stage.classList.add("grow"); layout(); }, 1700),
+    setTimeout(() => intro.classList.add("out"), 2300),
+    setTimeout(() => endIntro(true), 4300),
+  ];
+}
+function endIntro(natural) {
+  timers.forEach(clearTimeout); growing = false;
+  intro.classList.add("out"); stage.classList.remove("grow"); stage.style.visibility = "";
+  if (!natural) layout(); // skipped early: show everything at once
+  updateStats();
+}
+intro.onclick = () => endIntro(false);
+document.getElementById("replay").onclick = startIntro;
+
+// ---------- ring: the group's photos circle slowly; pointing at one stops it and enlarges it ----------
+const ring = document.getElementById("ring"), hub = ring.querySelector(".hub"), orbit = ring.querySelector(".orbit");
+let RG = null, items = [], angle = 0, speed = 0, R = 0, t0 = 0, lastT = 0, hovered = null, ringNext = 0;
+function openRing(g) {
+  RG = g; ring.style.setProperty("--c", g.color); ring.classList.add("open");
+  ring.querySelectorAll(".item").forEach(e => e.remove());
+  hub.innerHTML = `<b>${g.name}</b><i>${g.loi}</i><small>${g.photos.length ? g.photos.length + " khoảnh khắc" : "chưa có ảnh"}</small>`
+    + (g.photos.length ? `<button>Xem từng ảnh ›</button>` : "");
+  const btn = hub.querySelector("button"); if (btn) btn.onclick = () => openLb(g, 0);
+  const touch = matchMedia("(hover: none)").matches;
+  ring.querySelector(".hint").textContent = touch ? "Chạm vào ảnh để dừng và phóng to · chạm lần nữa để xem rõ" : "Chỉ chuột vào ảnh để dừng · bấm để xem rõ";
+  const W = innerWidth, H = innerHeight, S = Math.min(W, H), P = isPortrait();
+  R = S * (P ? 0.37 : 0.36);
+  const size = P ? Math.max(58, S * 0.17) : Math.min(124, Math.max(84, S * 0.15));
+  const slots = Math.min(g.photos.length, Math.floor(2 * Math.PI * R / (size * 1.2)));
+  orbit.style.cssText = `left:${W / 2 - R}px;top:${H / 2 - R}px;width:${2 * R}px;height:${2 * R}px`;
+  hub.style.cssText = `left:${W / 2}px;top:${H / 2}px;width:${Math.max(160, 2 * R - size * 1.7)}px`;
+  items = [];
+  for (let k = 0; k < slots; k++) {
+    const el = document.createElement("div");
+    el.className = "item"; el.dataset.k = k;
+    el.style.cssText = `width:${size}px;height:${size}px;background-image:url('${g.photos[k]}')`;
+    el.onpointerenter = e => { if (e.pointerType === "mouse") point(el); };
+    el.onpointerleave = e => { if (e.pointerType === "mouse") point(null); };
+    el.onclick = () => { if (touch && hovered !== el) point(el); else openLb(g, +el.dataset.k); };
+    ring.appendChild(el); items.push({ el, size });
+  }
+  ringNext = slots; angle = -Math.PI / 2; speed = 0; hovered = null; t0 = lastT = performance.now();
+  requestAnimationFrame(spin);
+}
+function point(el) {
+  if (hovered) hovered.classList.remove("on");
+  hovered = el; if (el) el.classList.add("on");
+}
+function spin(t) {
+  if (!ring.classList.contains("open")) return;
+  const dt = Math.min(50, t - lastT) / 1000; lastT = t;
+  speed += ((hovered ? 0 : 0.16) - speed) * Math.min(1, dt * 4); // ease to a stop when pointing at a photo
+  angle += speed * dt;
+  const open = Math.min(1, (t - t0) / 900), r = R * (1 - (1 - open) ** 3), cx = innerWidth / 2, cy = innerHeight / 2;
+  items.forEach(({ el, size }, k) => {
+    const a = angle + k * 2 * Math.PI / items.length;
+    el.style.left = cx + r * Math.cos(a) - size / 2 + "px"; el.style.top = cy + r * Math.sin(a) - size / 2 + "px";
+  });
+  requestAnimationFrame(spin);
+}
+// when a group has more photos than fit on the ring, photos take turns
+setInterval(() => {
+  if (!ring.classList.contains("open") || lb.classList.contains("open") || RG.photos.length <= items.length) return;
+  const free = items.filter(it => it.el !== hovered); if (!free.length) return;
+  const { el } = free[Math.floor(Math.random() * free.length)], k = ringNext++ % RG.photos.length;
+  el.classList.add("fade");
+  setTimeout(() => { el.style.backgroundImage = `url('${RG.photos[k]}')`; el.dataset.k = k; el.classList.remove("fade"); }, 600);
+}, 2200);
+const closeRing = () => { ring.classList.remove("open"); hovered = null; };
+ring.querySelector(".close").onclick = closeRing;
+ring.onclick = e => { if (e.target === ring) closeRing(); };
+
+// ---------- lightbox ----------
+let cur = 0, curG = null; const lb = document.getElementById("lb"), lbi = document.getElementById("lbi"), lbe = document.getElementById("lbe");
+function openLb(g, i) {
+  curG = g; const n = g.photos.length;
+  lb.querySelector(".box").style.setProperty("--c", g.color);
+  document.getElementById("lbn").textContent = g.name; document.getElementById("lbt").textContent = g.loi;
+  lb.querySelectorAll(".nav").forEach(b => b.style.display = n > 1 ? "" : "none");
+  if (n) {
+    cur = (i + n) % n; lbi.src = g.photos[cur]; lbi.style.display = ""; lbe.style.display = "none";
+    document.getElementById("lbc").textContent = `${cur + 1} / ${n}`;
+  } else {
+    lbi.style.display = "none"; lbe.style.display = ""; document.getElementById("lbc").textContent = "";
+    lbe.innerHTML = g.loading ? "Đang tải ảnh…" : `Tán <b>${g.name}</b> chưa có ảnh.<br>Chép ảnh vào thư mục <code>${g.dir}</code> (cạnh index.html), đặt tên <code>1.jpg</code>, <code>2.jpg</code>…`;
+  }
+  lb.classList.add("open");
+}
+const closeLb = () => lb.classList.remove("open");
+document.getElementById("lbx").onclick = closeLb;
+document.getElementById("lbp").onclick = () => openLb(curG, cur - 1);
+document.getElementById("lbnx").onclick = () => openLb(curG, cur + 1);
+lb.onclick = e => { if (e.target === lb) closeLb(); };
+addEventListener("keydown", e => { if (!lb.classList.contains("open")) { if (e.key === "Escape") closeRing(); return; } if (e.key === "Escape") closeLb(); if (e.key === "ArrowRight") openLb(curG, cur + 1); if (e.key === "ArrowLeft") openLb(curG, cur - 1); });
+let tx = null; // swipe left/right on phones
+lb.addEventListener("touchstart", e => tx = e.touches[0].clientX, { passive: true });
+lb.addEventListener("touchend", e => { if (tx === null) return; const dx = e.changedTouches[0].clientX - tx; tx = null; if (Math.abs(dx) > 45) openLb(curG, cur + (dx < 0 ? 1 : -1)); });
+
+const full = document.getElementById("full");
+if (!document.documentElement.requestFullscreen) full.remove();
+else full.onclick = () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+
+let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { initSky(); layout(); if (ring.classList.contains("open")) openRing(RG); }, 150); });
+initSky(); requestAnimationFrame(drawSky);
+startIntro();
+GROUPS.forEach(loadGroup);
+</script>
+</body>
+</html>
